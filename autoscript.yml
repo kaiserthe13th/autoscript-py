@@ -1,3 +1,4 @@
 version: [1, 1, 0]
 prog:
 - git fetch
+- ./autoscript -s ./autoscript-import-path.yml

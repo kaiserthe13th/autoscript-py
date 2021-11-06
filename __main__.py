@@ -12,20 +12,16 @@ colorama.init(autoreset=True)
 # CONSTANTS
 
 ## D_{x} = Default for {x}
-## U_{x} = IsUsed  for {x}
 
 D_REPEAT_TIME = 5.0
 REPEAT_TIME = D_REPEAT_TIME
-U_REPEAT_TIME = False
 
 D_EXEC_TIME = float('inf')
 EXEC_TIME = D_EXEC_TIME
-U_EXEC_TIME = False
 
 ## Script Location
 D_SCRIPT_LOC = "autoscript.yml"
 SCRIPT_LOC = D_SCRIPT_LOC
-U_SCRIPT_LOC = False
 
 __version__ = '1.1.0'
 __verlist__ = list(map(lambda x: int(x), __version__.split('.'))) # This turns version into a list of numbers (x, y, z being a number, x.y.z -> [x, y, z])
@@ -94,7 +90,6 @@ while len(args) > curarg:
         if len(args) > curarg+1:
             SCRIPT_LOC = args[curarg+1]
             curarg += 1
-            U_SCRIPT_LOC = True
         else:
             err('argument {arg} needs value <script>')
     elif arg in ('-T', '--template'):
@@ -120,7 +115,6 @@ while len(args) > curarg:
         if len(args) > curarg+1:
             EXEC_TIME = float(args[curarg+1])
             curarg += 1
-            U_EXEC_TIME = True
         else:
             err(f"argument {arg} needs value <time>")
             print_help(1)
@@ -128,7 +122,6 @@ while len(args) > curarg:
         if len(args) > curarg+1:
             REPEAT_TIME = float(args[curarg+1])
             curarg += 1
-            U_REPEAT_TIME = True
         else:
             err(f"argument {arg} needs value <time>")
             print_help(1)
@@ -148,11 +141,8 @@ try:
         if not progs and progs != []:
             err('`prog` for script not provided')
             exit(1)
-        exec_time = src.get('time')
-        if exec_time: EXEC_TIME = EXEC_TIME if U_EXEC_TIME else float(exec_time) # turn exec_time into a float because `inf` is a case we want to handle
-        repeat_time = src.get('repeat')
-        if repeat_time: REPEAT_TIME = REPEAT_TIME if U_REPEAT_TIME else repeat_time
-
+        EXEC_TIME = src.get('time') or EXEC_TIME # turn exec_time into a float because `inf` is a case we want to handle
+        REPEAT_TIME = src.get('repeat') or REPEAT_TIME
 except FileNotFoundError as e:
     err(f'script at `{SCRIPT_LOC}` not found? maybe you need to create it. run `{args[0]} --init` to initialize a script')
     exit(0)
