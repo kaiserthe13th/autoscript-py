@@ -49,16 +49,13 @@ prog:
 
 # UTILS
 
-def info(*args, **kwargs):
-    print(f'{Fore.BLUE+Style.BRIGHT}info:', *args, **kwargs)
+info = lambda *args, **kwargs: print(f'{Fore.BLUE+Style.BRIGHT}info:', *args, **kwargs)
+err = lambda explanation: print(f'{Fore.RED+Style.BRIGHT}error:{Style.RESET_ALL}', explanation, file=stderr)
 
 def authors():
     s = ''
     for a in authors:
         s += '- ' + a
-
-def err(explanation: str):
-    print(f'{Fore.RED+Style.BRIGHT}error:{Style.RESET_ALL}', explanation, file=stderr)
 
 def print_version():
     print(f"You are using autoscript version {__version__} released at {__reldate__}")
