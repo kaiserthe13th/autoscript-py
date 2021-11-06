@@ -11,9 +11,28 @@ colorama.init(autoreset=True)
 
 # CONSTANTS
 
-def info(*args, **kwargs):
-    print(f'{Fore.BLUE+Style.BRIGHT}info:', *args, **kwargs)
+## D_{x} = Default for {x}
+## U_{x} = IsUsed  for {x}
 
+D_REPEAT_TIME = 5.0
+REPEAT_TIME = D_REPEAT_TIME
+U_REPEAT_TIME = False
+
+D_EXEC_TIME = float('inf')
+EXEC_TIME = D_EXEC_TIME
+U_EXEC_TIME = False
+
+## Script Location
+D_SCRIPT_LOC = "autoscript.yml"
+SCRIPT_LOC = D_SCRIPT_LOC
+U_SCRIPT_LOC = False
+
+__version__ = '1.1.0'
+__verlist__ = list(map(lambda x: int(x), __version__.split('.'))) # This turns version into a list of numbers (x, y, z being a number, x.y.z -> [x, y, z])
+__reldate__ = '6 November 2021' # Release Date
+__authors__ = ['Kerem Göksu <superkerem13@gmail.com>'] # Authors
+
+## Templates
 templates = {
 'fetch': lambda: f'''\
 version: {__verlist__}
@@ -28,27 +47,15 @@ prog:
 '''
 }
 
+# UTILS
+
+def info(*args, **kwargs):
+    print(f'{Fore.BLUE+Style.BRIGHT}info:', *args, **kwargs)
+
 def authors():
     s = ''
     for a in authors:
         s += '- ' + a
-
-D_REPEAT_TIME = 5.0
-REPEAT_TIME = D_REPEAT_TIME
-U_REPEAT_TIME = False
-
-D_EXEC_TIME = float('inf')
-EXEC_TIME = D_EXEC_TIME
-U_EXEC_TIME = False
-
-D_SCRIPT_LOC = "autoscript.yml"
-SCRIPT_LOC = D_SCRIPT_LOC
-U_SCRIPT_LOC = False
-
-__version__ = '1.1.0'
-__verlist__ = list(map(lambda x: int(x), __version__.split('.')))
-__reldate__ = '6 November 2021'
-__authors__ = ['Kerem Göksu <superkerem13@gmail.com>']
 
 def err(explanation: str):
     print(f'{Fore.RED+Style.BRIGHT}error:{Style.RESET_ALL}', explanation, file=stderr)
@@ -75,6 +82,8 @@ def print_help(ec: int):
     print("    -V --version              show version info and exit", file=f)
     exit(ec)
 
+# ARGUMENT PARSER
+    
 curarg = 1
 while len(args) > curarg:
     arg = args[curarg]
@@ -106,6 +115,7 @@ while len(args) > curarg:
     elif arg in ('-h', '--help'): print_help(0)
     elif arg in ('-V', '--version'): print_version()
     elif arg == '--no-color':
+        # set every used Fore, Back, Style to ''
         Fore.BLUE = ''
         Fore.RED = ''
         Style.BRIGHT = ''
@@ -130,6 +140,8 @@ while len(args) > curarg:
         print_help(1)
     curarg += 1
 
+# LOAD SCRIPT
+
 t = time.time()
 
 try:
@@ -140,13 +152,15 @@ try:
             err('`prog` for script not provided')
             exit(1)
         exec_time = src.get('time')
-        if exec_time: EXEC_TIME = EXEC_TIME if U_EXEC_TIME else float(exec_time)
+        if exec_time: EXEC_TIME = EXEC_TIME if U_EXEC_TIME else float(exec_time) # turn exec_time into a float because `inf` is a case we want to handle
         repeat_time = src.get('repeat')
-        if repeat_time: REPEAT_TIME = REPEAT_TIME if U_REPEAT_TIME else float(repeat_time)
+        if repeat_time: REPEAT_TIME = REPEAT_TIME if U_REPEAT_TIME else repeat_time
 
 except FileNotFoundError as e:
     err(f'script at `{SCRIPT_LOC}` not found? maybe you need to create it. run `{args[0]} --init` to initialize a script')
     exit(0)
+
+# START SCRIPT
 
 info('starting...')
 try:
