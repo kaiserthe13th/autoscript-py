@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # IMPORTS
-import os
+from os import system, path
+realpath = path.realpath
 from sys import argv as args, stderr, stdout
 import time
 import yaml
@@ -13,6 +14,8 @@ colorama.init(autoreset=True)
 
 ## D_{x} = Default for {x}
 
+DEBUG = False
+
 D_REPEAT_TIME = 5.0
 REPEAT_TIME = D_REPEAT_TIME
 
@@ -23,9 +26,9 @@ EXEC_TIME = D_EXEC_TIME
 D_SCRIPT_LOC = "autoscript.yml"
 SCRIPT_LOC = D_SCRIPT_LOC
 
-__version__ = '1.1.0'
+__version__ = '2.0.0'
 __verlist__ = list(map(lambda x: int(x), __version__.split('.'))) # This turns version into a list of numbers (x, y, z being a number, x.y.z -> [x, y, z])
-__reldate__ = '6 November 2021' # Release Date
+__reldate__ = '7 November 2021' # Release Date
 __authors__ = ['Kerem Göksu <superkerem13@gmail.com>'] # Authors
 
 ## Templates
@@ -65,18 +68,21 @@ def print_help(ec: int):
     print(f"    {args[0]} [options]", file=f)
     print("", file=f)
     print("options:", file=f)
-    print(f"    -i --init                 initialize a autoscript at {D_SCRIPT_LOC}")
-    print(f"    -T --template <template>  initialize a autoscript according to a template at {D_SCRIPT_LOC}")
+    print(f"    -i --init                 initialize a autoscript at {D_SCRIPT_LOC}", file=f)
+    print(f"    -T --template <template>  initialize a autoscript according to a template at {D_SCRIPT_LOC}", file=f)
     print(f"    -t --time <time>          change execution time (type: float, default: {D_EXEC_TIME} s)", file=f)
     print(f"    -r --repeat-time <time>   change repeat time (type: float, default: {D_REPEAT_TIME} s)", file=f)
     print(f"    -s --script <script>      change the `script` to execute (type: file, default: {D_SCRIPT_LOC})", file=f)
+    print("    -d --debug                show debug info", file=f)
     print("       --no-color             do not colorize output", file=f)
     print("    -h --help                 show this help message and exit", file=f)
     print("    -V --version              show version info and exit", file=f)
     exit(ec)
 
 # ARGUMENT PARSER
-    
+
+info('parsing arguments...')
+
 curarg = 1
 while len(args) > curarg:
     arg = args[curarg]
@@ -92,6 +98,7 @@ while len(args) > curarg:
             curarg += 1
         else:
             err('argument {arg} needs value <script>')
+            print_help(1)
     elif arg in ('-T', '--template'):
         if len(args) > curarg+1:
             with open(D_SCRIPT_LOC, 'w') as f:
@@ -103,9 +110,11 @@ while len(args) > curarg:
                 exit(0)
         else:
             err(f"argument {arg} needs value <template>")
-            exit(1)
+            print_help(1)
     elif arg in ('-h', '--help'): print_help(0)
     elif arg in ('-V', '--version'): print_version()
+    elif arg in ('-d', '--debug'):
+        DEBUG = True
     elif arg == '--no-color':
         # set every used Fore, Back, Style to ''
         Fore.BLUE = ''
@@ -130,33 +139,70 @@ while len(args) > curarg:
         print_help(1)
     curarg += 1
 
+info('parsed arguments!')
+
 # LOAD SCRIPT
 
-t = time.time()
+if DEBUG: info('loading script...')
 
-try:
-    with open(SCRIPT_LOC) as f:
-        src = yaml.safe_load(f.read())
-        progs = src.get('prog')
-        if not progs and progs != []:
-            err('`prog` for script not provided')
+class Import:
+    def __init__(self, visited, prog):
+        self.visited, self.prog = (
+            visited, prog
+        )
+
+class Importer:
+    def __init__(self, loc: str, visited: list):
+        self.loc = loc
+        self.visited = visited
+    
+    def import_(self):
+        global EXEC_TIME
+        global REPEAT_TIME
+        try:
+            with open(self.loc) as f:
+                src = yaml.safe_load(f.read())
+                progs_ = src.get('prog')
+                if not progs_ and progs_ != []:
+                    err('`prog` for script not provided')
+                    exit(1)
+                EXEC_TIME = src.get('time') or EXEC_TIME
+                REPEAT_TIME = src.get('repeat') or REPEAT_TIME
+                imports = src.get('import')
+                if imports:
+                    if isinstance(imports, str):
+                        if realpath(imports) not in self.visited:
+                            imported = Importer(realpath(imports), self.visited + [realpath(i)]).import_()
+                            progs_ += imported.prog
+                            self.visited += imported.visited
+                    elif isinstance(imports, list):
+                        for i in imports:
+                            if realpath(i) not in self.visited:
+                                imported = Importer(realpath(i), self.visited + [realpath(i)]).import_()
+                                progs_ += imported.prog
+        except FileNotFoundError as e:
+            err(f'script at `{self.loc}` not found? maybe you need to create it. run `{args[0]} --init` to initialize a script')
             exit(1)
-        EXEC_TIME = src.get('time') or EXEC_TIME # turn exec_time into a float because `inf` is a case we want to handle
-        REPEAT_TIME = src.get('repeat') or REPEAT_TIME
-except FileNotFoundError as e:
-    err(f'script at `{SCRIPT_LOC}` not found? maybe you need to create it. run `{args[0]} --init` to initialize a script')
-    exit(0)
+        return Import(self.visited, progs_)
+
+progs = Importer(realpath(SCRIPT_LOC), [realpath(SCRIPT_LOC)]).import_().prog
+
+if DEBUG: info('loaded script!')
 
 # START SCRIPT
+
+t = time.time()
 
 info('starting...')
 try:
     while time.time()-t < EXEC_TIME:
         for prog in progs:
-            ec = os.system(prog)
+            if DEBUG: info(f'executing `{prog}`...')
+            ec = system(prog)
             if ec != 0:
                 err(f'`{prog}` encountered an error')
                 exit(ec)
+            if DEBUG: info(f'executed `{prog}`!')
         time.sleep(REPEAT_TIME)
 except KeyboardInterrupt: pass
 info('closing...')
